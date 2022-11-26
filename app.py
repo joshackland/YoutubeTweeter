@@ -1,0 +1,76 @@
+import json
+from googleapiclient.discovery import build
+import tweepy
+import os
+from datetime import datetime, timedelta, timezone
+
+
+def tweet(title, link):
+    with open("./api/twitter.json", "r") as f:
+        twitter_creds = json.load(f)
+
+    consumer_key = twitter_creds["API_Key"]
+    consumer_secret = twitter_creds["API_Key_Secret"]
+    access_token = twitter_creds["Access_Token"]
+    access_token_secret = twitter_creds["Access_Token_Secret"]
+
+
+    client = tweepy.Client(
+        consumer_key=consumer_key, consumer_secret=consumer_secret,
+        access_token=access_token, access_token_secret=access_token_secret
+    )
+    
+    text = f"I have just uploaded a new YouTube video!\n{title}\n{link}"
+    response = client.create_tweet(
+        text=text
+    )
+
+
+youtube_id = "UCMZ_dijAFd4Hc2yrLmfrMHQ" #replace this with your own channel id - https://www.youtube.com/channel/UCMZ_dijAFd4Hc2yrLmfrMHQ
+youtube_video_url = "youtu.be/"
+
+
+video_list_exists = os.path.exists("./videos.json")
+
+if video_list_exists:
+    with open("./videos.json", "r") as f:
+        previous_videos = json.load(f)
+else:
+    previous_videos = {}
+
+with open("./api/youtube.json", "r") as f:
+    youtube_creds = json.load(f)
+
+youtube = build("youtube", 'v3', developerKey=youtube_creds["API_Token"])
+
+request = youtube.search().list(
+    part="snippet",
+    channelId=youtube_id,
+    order="date",
+    publishedAfter=(datetime.now(timezone.utc) - timedelta(days=1)).isoformat()
+)
+response = request.execute()
+
+if len(response["items"]) == 0:
+    print("No videos found")
+    exit()
+
+
+
+for video in response["items"]:
+    if video["id"]["kind"] != "youtube#video" or video["id"]["videoId"] in previous_videos:
+        continue
+
+    previous_videos[video["id"]["videoId"]] = {
+        "title": video["snippet"]["title"],
+        "url": youtube_video_url+video["id"]["videoId"],
+        "date": video["snippet"]["publishedAt"]
+    }
+    
+    print(f"New video ({video['snippet']['title']}), creating tweet.")
+    tweet(video["snippet"]["title"], youtube_video_url+video["id"]["videoId"])
+
+
+
+with open("./videos.json", "w+") as f:
+    previous_videos = json.dump(previous_videos, f, indent=2)
