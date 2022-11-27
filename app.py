@@ -3,10 +3,15 @@ from googleapiclient.discovery import build
 import tweepy
 import os
 from datetime import datetime, timedelta, timezone
+import pathlib
 
+script_directory = str(pathlib.Path(__file__).parent.resolve())
+api_twitter_json_path = script_directory+"/api/twitter.json"
+api_youtube_json_path = script_directory+"/api/youtube.json"
+video_json_path = script_directory+"/videos.json"
 
 def tweet(title, link):
-    with open("./api/twitter.json", "r") as f:
+    with open(api_twitter_json_path, "r") as f:
         twitter_creds = json.load(f)
 
     consumer_key = twitter_creds["API_Key"]
@@ -30,15 +35,17 @@ youtube_id = "UCMZ_dijAFd4Hc2yrLmfrMHQ" #replace this with your own channel id -
 youtube_video_url = "youtu.be/"
 
 
-video_list_exists = os.path.exists("./videos.json")
+video_list_exists = os.path.exists(video_json_path)
 
 if video_list_exists:
-    with open("./videos.json", "r") as f:
+    print("videos.json exists")
+    with open(video_json_path, "r") as f:
         previous_videos = json.load(f)
 else:
+    print("videos.json does not exist")
     previous_videos = {}
 
-with open("./api/youtube.json", "r") as f:
+with open(api_youtube_json_path, "r") as f:
     youtube_creds = json.load(f)
 
 youtube = build("youtube", 'v3', developerKey=youtube_creds["API_Token"])
@@ -54,6 +61,8 @@ response = request.execute()
 if len(response["items"]) == 0:
     print("No videos found")
     exit()
+else:
+    print("Videos uploaded in the past day found")
 
 
 
@@ -72,5 +81,5 @@ for video in response["items"]:
 
 
 
-with open("./videos.json", "w+") as f:
+with open(video_json_path, "w+") as f:
     previous_videos = json.dump(previous_videos, f, indent=2)
