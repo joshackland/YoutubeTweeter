@@ -56,7 +56,12 @@ request = youtube.search().list(
     order="date",
     publishedAfter=(datetime.now(timezone.utc) - timedelta(days=1)).isoformat()
 )
-response = request.execute()
+
+try:
+    response = request.execute()
+except Exception as e:
+    print("YouTube API Failed:\n"+str(e))
+    exit()
 
 if len(response["items"]) == 0:
     print("No videos found")
